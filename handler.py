@@ -223,30 +223,23 @@ def resolve_channel(channel_type, target, task):
     Returns:
         Discord channel ID or None
     """
-    # If it's already a channel ID, return it
+    # If channel_id is already stored in task (resolved at creation time), use it
+    if task.get('channel_id'):
+        return task['channel_id']
+
+    # If it's already a channel ID (numeric string), return it
     if channel_type and channel_type.isdigit():
         return channel_type
 
-    try:
-        response = lambda_client.invoke(
-            FunctionName=DISCORD_BOT_LAMBDA,
-            InvocationType='RequestResponse',
-            Payload=json.dumps({
-                'action': 'resolve_channel',
-                'channel_type': channel_type,
-                'target': target,
-                'assignee': task.get('assignee', 'void-mother')
-            })
-        )
+    # For special channel types (dm, group-dm, priv-chan, priv-chan-group),
+    # the dronebot HTTP endpoint will need to handle these
+    # For now, return None and let the message handler deal with it
+    if channel_type in ('dm', 'group-dm', 'priv-chan', 'priv-chan-group'):
+        logger.warning(f"Special channel type '{channel_type}' requires bot-side handling")
+        return None
 
-        result = json.loads(response['Payload'].read())
-        if result.get('statusCode') == 200:
-            body = json.loads(result.get('body', '{}'))
-            return body.get('channel_id')
-
-    except Exception as e:
-        logger.error(f"Failed to resolve channel {channel_type} for {target}: {e}")
-
+    # If we get here, we can't resolve - this shouldn't happen with new tasks
+    logger.warning(f"Cannot resolve channel '{channel_type}' - no channel_id stored")
     return None
 
 

@@ -80,6 +80,7 @@ LAMBDA_POLICY=$(cat << EOF
             "Resource": [
                 "arn:aws:lambda:${REGION}:${ACCOUNT_ID}:function:dronebot",
                 "arn:aws:lambda:${REGION}:${ACCOUNT_ID}:function:void-mother-chat",
+                "arn:aws:lambda:${REGION}:${ACCOUNT_ID}:function:void-mother-response-generator",
                 "arn:aws:lambda:${REGION}:${ACCOUNT_ID}:function:greeter-drone",
                 "arn:aws:lambda:${REGION}:${ACCOUNT_ID}:function:propaganda-drone"
             ]
@@ -117,6 +118,7 @@ if aws lambda get-function --function-name $LAMBDA_NAME --region $REGION 2>/dev/
         --function-name $LAMBDA_NAME \
         --timeout 300 \
         --memory-size 256 \
+        --environment "Variables={DRONEBOT_URL=${DRONEBOT_URL:-},DRONEBOT_API_TOKEN=${DRONEBOT_API_TOKEN:-},RESPONSE_GENERATOR_LAMBDA=${RESPONSE_GENERATOR_LAMBDA:-void-mother-response-generator}}" \
         --region $REGION > /dev/null
 
     echo "Updated Lambda: $LAMBDA_NAME"
@@ -129,6 +131,7 @@ else
         --zip-file fileb://lambda.zip \
         --timeout 300 \
         --memory-size 256 \
+        --environment "Variables={DRONEBOT_URL=${DRONEBOT_URL:-},DRONEBOT_API_TOKEN=${DRONEBOT_API_TOKEN:-},RESPONSE_GENERATOR_LAMBDA=${RESPONSE_GENERATOR_LAMBDA:-void-mother-response-generator}}" \
         --region $REGION > /dev/null
 
     echo "Created Lambda: $LAMBDA_NAME"
