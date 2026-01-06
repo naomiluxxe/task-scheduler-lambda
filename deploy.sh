@@ -143,9 +143,9 @@ RULE_NAME="task-scheduler-hourly"
 if ! aws events describe-rule --name $RULE_NAME --region $REGION 2>/dev/null; then
     aws events put-rule \
         --name $RULE_NAME \
-        --schedule-expression "rate(1 hour)" \
+        --schedule-expression "rate(15 minutes)" \
         --state ENABLED \
-        --description "Trigger task scheduler every hour" \
+        --description "Trigger task scheduler every 15 minutes" \
         --region $REGION
 
     aws lambda add-permission \
@@ -169,7 +169,7 @@ fi
 echo ""
 echo "=== Deployment Complete ==="
 echo "Lambda: $LAMBDA_NAME"
-echo "Schedule: Every hour"
+echo "Schedule: Every 15 minutes"
 echo ""
 echo "To test manually:"
 echo "  aws lambda invoke --function-name $LAMBDA_NAME --region $REGION /dev/stdout"
