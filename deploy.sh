@@ -138,7 +138,7 @@ rm lambda.zip
 
 # Create EventBridge rule
 echo "Setting up EventBridge schedule..."
-RULE_NAME="task-scheduler-hourly"
+RULE_NAME="task-scheduler"
 
 if ! aws events describe-rule --name $RULE_NAME --region $REGION 2>/dev/null; then
     aws events put-rule \

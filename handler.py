@@ -1,6 +1,6 @@
 """Task Scheduler Lambda Handler.
 
-Triggered by EventBridge on a schedule (e.g., hourly).
+Triggered by EventBridge on a schedule (every 15 minutes).
 Queries due tasks and fires them to the appropriate agent.
 """
 
