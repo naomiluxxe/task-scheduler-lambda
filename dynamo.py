@@ -1,8 +1,11 @@
 """DynamoDB operations for cpu-tasks table."""
 
 import boto3
+import logging
 from boto3.dynamodb.conditions import Key, Attr
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 table = dynamodb.Table('cpu-tasks')
@@ -73,10 +76,20 @@ def mark_task_fired(task):
     scheduler_params = task.get('scheduler_params', {})
     repeats_executed = scheduler_params.get('repeats_executed', 0) + 1
     num_repeats = scheduler_params.get('num_repeats', 0)
+    recurring = task.get('recurring')
+    resolutions = task.get('resolutions', [])
 
-    # Check if task should be deactivated
+    # Determine new status
     new_status = task['status']
-    if num_repeats > 0 and repeats_executed >= num_repeats:
+
+    # Auto-resolve if: no resolutions specified AND (one-time OR reached repeat limit)
+    is_one_time = not recurring and num_repeats == 0
+    reached_limit = num_repeats > 0 and repeats_executed >= num_repeats
+    no_resolution_required = not resolutions or resolutions == []
+
+    if no_resolution_required and (is_one_time or reached_limit):
+        new_status = 'resolved'
+    elif reached_limit:
         new_status = 'inactive'
 
     # Calculate new next_fire
@@ -87,14 +100,37 @@ def mark_task_fired(task):
         'repeats_executed': repeats_executed
     }
 
-    return update_task(task['task_id'], task['target'], {
+    updates = {
         'last_fired': now,
-        'next_fire': next_fire,
         'status': new_status,
         'scheduler_params': updated_scheduler_params,
         'error_count': 0,
         'last_error': None
-    })
+    }
+
+    # Only include next_fire if it has a value (GSI can't handle NULL)
+    if next_fire:
+        updates['next_fire'] = next_fire
+    else:
+        # Remove next_fire for completed one-time tasks
+        remove_task_field(task['task_id'], task['target'], 'next_fire')
+
+    return update_task(task['task_id'], task['target'], updates)
+
+
+def remove_task_field(task_id, target, field_name):
+    """Remove a field from a task (used for GSI-indexed fields that can't be NULL)."""
+    try:
+        table.update_item(
+            Key={
+                'task_id': task_id,
+                'target': target
+            },
+            UpdateExpression=f'REMOVE #{field_name}',
+            ExpressionAttributeNames={f'#{field_name}': field_name}
+        )
+    except Exception as e:
+        logger.warning(f"Failed to remove field {field_name}: {e}")
 
 
 def record_task_error(task, error_message):

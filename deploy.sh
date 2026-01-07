@@ -68,8 +68,19 @@ LAMBDA_POLICY=$(cat << EOF
             "Resource": [
                 "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/cpu-tasks",
                 "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/cpu-tasks/index/*",
-                "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/cpuDrones"
+                "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/cpuDrones",
+                "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/cpu-drone-data",
+                "arn:aws:dynamodb:${REGION}:${ACCOUNT_ID}:table/cpu-drone-data/index/*"
             ]
+        },
+        {
+            "Sid": "Bedrock",
+            "Effect": "Allow",
+            "Action": [
+                "bedrock:InvokeModel",
+                "bedrock:InvokeModelWithResponseStream"
+            ],
+            "Resource": "*"
         },
         {
             "Sid": "InvokeLambda",

@@ -11,8 +11,24 @@ import boto3
 import logging
 import urllib.request
 import urllib.error
+from decimal import Decimal
 
 logger = logging.getLogger(__name__)
+
+
+def convert_decimals(obj):
+    """Convert DynamoDB Decimal types to Python native types."""
+    if isinstance(obj, Decimal):
+        if obj % 1 == 0:
+            return int(obj)
+        return float(obj)
+    elif isinstance(obj, dict):
+        return {k: convert_decimals(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_decimals(i) for i in obj]
+    return obj
+
+
 lambda_client = boto3.client('lambda', region_name='us-east-1')
 
 # Configuration from environment
@@ -85,7 +101,7 @@ def handle_message(task, target, channel_id):
         'target_id': target,
         'channel_id': channel_id,
         'content_prompt': content_prompt,
-        'agent_params': agent_params
+        'agent_params': convert_decimals(agent_params)
     }
 
     try:
@@ -164,9 +180,9 @@ def send_to_dronebot(channel_id, content, agent_name, task_id, target):
         return {'success': False, 'error': 'DRONEBOT_API_TOKEN not configured'}
 
     payload = json.dumps({
+        'agent_id': agent_name,  # agent_name is actually the agent_id (void-mother, 0xf100, etc.)
         'channel_id': channel_id,
         'content': content,
-        'agent_name': agent_name,
         'task_id': task_id,
         'target': target
     }).encode('utf-8')
