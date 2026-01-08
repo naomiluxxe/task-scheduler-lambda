@@ -99,10 +99,10 @@ def process_task(task):
     for target in targets:
         try:
             # Resolve channel for this target
-            channel_id = resolve_channel(task.get('channel', 'dm'), target, task)
+            channel_id, user_id = resolve_channel(task.get('channel', 'dm'), target, task)
 
-            if not channel_id:
-                logger.warning(f"Could not resolve channel for task {task_id}, target {target}")
+            if not channel_id and not user_id:
+                logger.warning(f"Could not resolve channel/user for task {task_id}, target {target}")
                 target_results.append({
                     'target': target,
                     'success': False,
@@ -113,7 +113,7 @@ def process_task(task):
 
             # Fire the task based on type
             if task_type == 'MESSAGE':
-                result = handle_message(task, target, channel_id)
+                result = handle_message(task, target, channel_id, user_id)
             elif task_type == 'POLL':
                 result = handle_poll(task, target, channel_id)
             elif task_type == 'QUERY-FOR-UPDATE':
@@ -213,7 +213,7 @@ def resolve_role_members(role_name):
 
 def resolve_channel(channel_type, target, task):
     """
-    Resolve channel type to actual channel ID.
+    Resolve channel type to actual channel ID or drone ID for DMs.
 
     Args:
         channel_type: 'dm', 'group-dm', 'priv-chan', 'priv-chan-group', or channel ID
@@ -221,26 +221,32 @@ def resolve_channel(channel_type, target, task):
         task: Full task object
 
     Returns:
-        Discord channel ID or None
+        tuple of (channel_id, drone_id) - one will be set, other will be None
+        For DMs: (None, drone_id) - dronebot will resolve to Discord user
+        For channels: (channel_id, None)
     """
     # If channel_id is already stored in task (resolved at creation time), use it
     if task.get('channel_id'):
-        return task['channel_id']
+        return (task['channel_id'], None)
 
     # If it's already a channel ID (numeric string), return it
     if channel_type and channel_type.isdigit():
-        return channel_type
+        return (channel_type, None)
 
-    # For special channel types (dm, group-dm, priv-chan, priv-chan-group),
-    # the dronebot HTTP endpoint will need to handle these
-    # For now, return None and let the message handler deal with it
-    if channel_type in ('dm', 'group-dm', 'priv-chan', 'priv-chan-group'):
-        logger.warning(f"Special channel type '{channel_type}' requires bot-side handling")
-        return None
+    # Handle DM channel type - pass drone_id for dronebot to resolve
+    if channel_type == 'dm':
+        logger.info(f"DM task for drone {target} - dronebot will resolve")
+        return (None, target)
+
+    # For other special channel types (group-dm, priv-chan, priv-chan-group),
+    # not yet implemented
+    if channel_type in ('group-dm', 'priv-chan', 'priv-chan-group'):
+        logger.warning(f"Special channel type '{channel_type}' not yet implemented")
+        return (None, None)
 
     # If we get here, we can't resolve - this shouldn't happen with new tasks
     logger.warning(f"Cannot resolve channel '{channel_type}' - no channel_id stored")
-    return None
+    return (None, None)
 
 
 def alert_cpu_errors(task, error_message):

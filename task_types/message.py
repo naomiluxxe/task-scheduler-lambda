@@ -53,7 +53,7 @@ AGENT_CONFIG = {
 }
 
 
-def handle_message(task, target, channel_id):
+def handle_message(task, target, channel_id, drone_id=None):
     """
     Handle a MESSAGE task with full LLM generation.
 
@@ -63,8 +63,9 @@ def handle_message(task, target, channel_id):
 
     Args:
         task: The task object from DynamoDB
-        target: The resolved target (drone ID or user ID)
-        channel_id: The Discord channel ID to post in
+        target: The resolved target (drone ID)
+        channel_id: The Discord channel ID to post in (None if DM)
+        drone_id: The drone ID for DMs - dronebot resolves to Discord user (None if channel message)
 
     Returns:
         dict with success status and any response data
@@ -80,10 +81,10 @@ def handle_message(task, target, channel_id):
             'error': 'No message content/prompt provided'
         }
 
-    if not channel_id:
+    if not channel_id and not drone_id:
         return {
             'success': False,
-            'error': 'No channel_id available (special channel types not yet supported)'
+            'error': 'No channel_id or drone_id available'
         }
 
     # Get agent config
@@ -135,6 +136,7 @@ def handle_message(task, target, channel_id):
     try:
         http_result = send_to_dronebot(
             channel_id=channel_id,
+            drone_id=drone_id,
             content=generated_message,
             agent_name=assignee,
             task_id=task['task_id'],
@@ -159,16 +161,17 @@ def handle_message(task, target, channel_id):
         return {'success': False, 'error': f'HTTP error: {str(e)}'}
 
 
-def send_to_dronebot(channel_id, content, agent_name, task_id, target):
+def send_to_dronebot(channel_id, content, agent_name, task_id, target, drone_id=None):
     """
     Send message to Discord via dronebot HTTP endpoint.
 
     Args:
-        channel_id: Discord channel ID
+        channel_id: Discord channel ID (None if sending DM)
         content: Message content
         agent_name: Agent that generated the message
         task_id: Task ID for logging
-        target: Target user ID
+        target: Target drone ID
+        drone_id: Drone ID for DMs - dronebot resolves to Discord user (None if sending to channel)
 
     Returns:
         dict with success status and message_id if successful
@@ -179,13 +182,21 @@ def send_to_dronebot(channel_id, content, agent_name, task_id, target):
     if not DRONEBOT_TOKEN:
         return {'success': False, 'error': 'DRONEBOT_API_TOKEN not configured'}
 
-    payload = json.dumps({
+    payload_dict = {
         'agent_id': agent_name,  # agent_name is actually the agent_id (void-mother, 0xf100, etc.)
-        'channel_id': channel_id,
         'content': content,
         'task_id': task_id,
         'target': target
-    }).encode('utf-8')
+    }
+
+    # Include either channel_id or drone_id (for DMs)
+    if drone_id:
+        payload_dict['drone_id'] = drone_id
+        logger.info(f"Sending DM to drone {drone_id}")
+    else:
+        payload_dict['channel_id'] = channel_id
+
+    payload = json.dumps(payload_dict).encode('utf-8')
 
     url = f"{DRONEBOT_URL}/task/execute"
     logger.info(f"Sending message to {url}")
