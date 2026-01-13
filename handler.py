@@ -92,51 +92,79 @@ def process_task(task):
         logger.warning(f"Task {task_id} has no valid targets")
         return {'skipped': True, 'reason': 'no_targets'}
 
-    # Process each target
+    # Process targets
     target_results = []
     all_success = True
 
-    for target in targets:
+    # For MESSAGE tasks to a public channel, send ONE message mentioning all targets
+    # For DM tasks, send separate messages to each target
+    channel_type = task.get('channel', 'dm')
+    is_public_channel = channel_type not in ('dm', 'group-dm') and task.get('channel_id')
+
+    if task_type == 'MESSAGE' and is_public_channel:
+        # Public channel message - send ONE message with all targets
         try:
-            # Resolve channel for this target
-            channel_id, user_id = resolve_channel(task.get('channel', 'dm'), target, task)
-
-            if not channel_id and not user_id:
-                logger.warning(f"Could not resolve channel/user for task {task_id}, target {target}")
-                target_results.append({
-                    'target': target,
-                    'success': False,
-                    'error': 'channel_resolution_failed'
-                })
-                all_success = False
-                continue
-
-            # Fire the task based on type
-            if task_type == 'MESSAGE':
-                result = handle_message(task, target, channel_id, user_id)
-            elif task_type == 'POLL':
-                result = handle_poll(task, target, channel_id)
-            elif task_type == 'QUERY-FOR-UPDATE':
-                result = handle_query_for_update(task, target, channel_id)
-            else:
-                result = {'success': False, 'error': f'Unknown task type: {task_type}'}
-
+            channel_id = task.get('channel_id')
+            # Pass all targets as a combined string for the message
+            all_targets = ' '.join(targets) if targets else ''
+            result = handle_message(task, all_targets, channel_id, None)
             target_results.append({
-                'target': target,
+                'target': all_targets,
                 **result
             })
-
             if not result.get('success'):
                 all_success = False
-
         except Exception as e:
-            logger.error(f"Error processing task {task_id} for target {target}: {e}")
+            logger.error(f"Error processing task {task_id}: {e}")
             target_results.append({
-                'target': target,
+                'target': 'all',
                 'success': False,
                 'error': str(e)
             })
             all_success = False
+    else:
+        # DM or other task types - process each target individually
+        for target in targets:
+            try:
+                # Resolve channel for this target
+                channel_id, user_id = resolve_channel(task.get('channel', 'dm'), target, task)
+
+                if not channel_id and not user_id:
+                    logger.warning(f"Could not resolve channel/user for task {task_id}, target {target}")
+                    target_results.append({
+                        'target': target,
+                        'success': False,
+                        'error': 'channel_resolution_failed'
+                    })
+                    all_success = False
+                    continue
+
+                # Fire the task based on type
+                if task_type == 'MESSAGE':
+                    result = handle_message(task, target, channel_id, user_id)
+                elif task_type == 'POLL':
+                    result = handle_poll(task, target, channel_id)
+                elif task_type == 'QUERY-FOR-UPDATE':
+                    result = handle_query_for_update(task, target, channel_id)
+                else:
+                    result = {'success': False, 'error': f'Unknown task type: {task_type}'}
+
+                target_results.append({
+                    'target': target,
+                    **result
+                })
+
+                if not result.get('success'):
+                    all_success = False
+
+            except Exception as e:
+                logger.error(f"Error processing task {task_id} for target {target}: {e}")
+                target_results.append({
+                    'target': target,
+                    'success': False,
+                    'error': str(e)
+                })
+                all_success = False
 
     # Update task state
     if all_success:
