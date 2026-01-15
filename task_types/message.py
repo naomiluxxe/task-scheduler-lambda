@@ -71,7 +71,8 @@ def handle_message(task, target, channel_id, drone_id=None):
         dict with success status and any response data
     """
     payload = task.get('payload', {})
-    content_prompt = payload.get('content', '')
+    # Support both 'content' and 'message_template' (the latter is used in documentation)
+    content_prompt = payload.get('content', '') or payload.get('message_template', '')
     agent_params = task.get('agent_params', {})
     assignee = task.get('assignee', 'void-mother')
 
