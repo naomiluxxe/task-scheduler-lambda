@@ -8,6 +8,9 @@ import json
 import random
 import logging
 import boto3
+import os
+import urllib.request
+import urllib.error
 from datetime import datetime
 
 import dynamo
@@ -17,11 +20,9 @@ from task_types import handle_message, handle_poll, handle_query_for_update
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Discord bot Lambda for channel resolution
-DISCORD_BOT_LAMBDA = 'dronebot'
-
-# Error channel for alerts
-CPU_ERRORS_CHANNEL_ID = None  # Set via environment or lookup
+# Dronebot HTTP endpoint for error reporting
+DRONEBOT_URL = os.environ.get('DRONEBOT_URL', 'http://localhost:3000')
+DRONEBOT_TOKEN = os.environ.get('DRONEBOT_API_TOKEN', '')
 
 lambda_client = boto3.client('lambda', region_name='us-east-1')
 
@@ -278,7 +279,11 @@ def resolve_channel(channel_type, target, task):
 
 
 def alert_cpu_errors(task, error_message):
-    """Post error to #cpu-errors channel."""
+    """Post error to #cpu-errors channel via dronebot HTTP endpoint."""
+    if not DRONEBOT_URL or not DRONEBOT_TOKEN:
+        logger.error("DRONEBOT_URL or DRONEBOT_API_TOKEN not configured for error alerts")
+        return
+
     try:
         # Build error message
         content = (
@@ -290,17 +295,34 @@ def alert_cpu_errors(task, error_message):
             f"Will retry on next scheduled cycle."
         )
 
-        # Invoke Discord bot to post error
-        lambda_client.invoke(
-            FunctionName=DISCORD_BOT_LAMBDA,
-            InvocationType='Event',
-            Payload=json.dumps({
-                'action': 'post_error',
-                'channel': 'cpu-errors',
-                'content': content
-            })
+        # Post error via dronebot HTTP endpoint
+        payload = json.dumps({
+            'content': content,
+            'source': 'task-scheduler'
+        }).encode('utf-8')
+
+        url = f"{DRONEBOT_URL}/post/error"
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={
+                'Content-Type': 'application/json',
+                'X-Dronebot-Token': DRONEBOT_TOKEN
+            },
+            method='POST'
         )
 
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode('utf-8'))
+            if result.get('success'):
+                logger.info(f"Posted error to cpu-errors: {result.get('message_id')}")
+            else:
+                logger.error(f"Failed to post error: {result.get('error')}")
+
+    except urllib.error.HTTPError as e:
+        logger.error(f"HTTP error posting to cpu-errors: {e.code}")
+    except urllib.error.URLError as e:
+        logger.error(f"URL error posting to cpu-errors: {e.reason}")
     except Exception as e:
         logger.error(f"Failed to alert cpu-errors: {e}")
 
