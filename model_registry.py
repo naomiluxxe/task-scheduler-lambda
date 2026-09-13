@@ -108,6 +108,7 @@ BUILTIN = {
         'amazon.nova-pro': {'in': 0.80, 'out': 3.20},
         'amazon.nova-lite': {'in': 0.06, 'out': 0.24},
         'amazon.nova-micro': {'in': 0.035, 'out': 0.14},
+        'amazon.titan-embed-text': {'kind': 'embedding', 'in': 0.02, 'out': 0.0},
         'amazon.nova-canvas': {'kind': 'image'},
         'amazon.nova-sonic': {'kind': 'speech'},
         'amazon.nova-2-sonic': {'kind': 'speech'},
@@ -168,6 +169,9 @@ BUILTIN = {
                               'note': 'the weekly deep session'},
 
         # -- not called from code: recorded so the audit knows who uses what
+        'kb_embeddings': {'rung': 'light', 'platform': 'claude', 'shift': False,
+                          'managed': 'Bedrock KB 8T0D0A5EW4 embedding model (amazon.titan-embed-text-v2:0) — fixed at KB '
+                                     'creation; changing it means re-embedding the whole corpus'},
         'kb_parser': {'rung': 'standard', 'platform': 'claude', 'shift': False,
                       'managed': 'Bedrock KB 8T0D0A5EW4 / data source JSYIFJB3NE parsing model — change it with '
                                  'bedrock-agent update_data_source, then edit this role to match'},
