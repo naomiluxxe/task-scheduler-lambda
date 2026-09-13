@@ -25,7 +25,18 @@ dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
 DRONE_DATA_TABLE = 'cpu-drone-data'
 DRONEBOT_URL = os.environ.get('DRONEBOT_URL', 'http://localhost:3000')
 DRONEBOT_TOKEN = os.environ.get('DRONEBOT_API_TOKEN', '')
-BEDROCK_MODEL_ID = os.environ.get('BEDROCK_MODEL_ID', 'us.anthropic.claude-haiku-4-5-20251001-v1:0')
+
+
+def _model(role, default):
+    """The model registry's pick for `role` (agent-config/model-registry); `default`
+    only if the registry module is missing from this package."""
+    try:
+        import model_registry
+        return model_registry.model_for(role)
+    except Exception as e:
+        print(f"[model] registry unavailable ({e}) — {role} uses {default}")
+        return default
+
 
 # Tool definitions for the LLM (Bedrock Converse API format)
 AVAILABLE_TOOLS = [
@@ -163,7 +174,7 @@ Be specific and helpful in your messages. Reference the actual field names that 
         try:
             # Call Bedrock with tools
             response = bedrock.converse(
-                modelId=BEDROCK_MODEL_ID,
+                modelId=_model('scheduled_query', 'us.anthropic.claude-haiku-4-5-20251001-v1:0'),
                 system=[{"text": system_prompt}],
                 messages=messages,
                 toolConfig={"tools": AVAILABLE_TOOLS}

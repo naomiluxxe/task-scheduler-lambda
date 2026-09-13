@@ -112,11 +112,26 @@ ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${ROLE_NAME}"
 echo "Packaging Lambda..."
 cd "$(dirname "$0")"
 rm -f lambda.zip
-zip -r lambda.zip handler.py dynamo.py task_types/
+zip -r lambda.zip handler.py dynamo.py model_registry.py task_types/
+
+# The environment below is written whole. Anything not set in this shell is
+# read back from the live function first — otherwise a deploy from a fresh
+# terminal blanks DRONEBOT_URL/TOKEN, which breaks every scheduled task AND the
+# deliberation deploy (it copies those two values from this function).
+live_env() {
+    local v
+    v=$(aws lambda get-function-configuration --function-name $LAMBDA_NAME --region $REGION \
+        --query "Environment.Variables.$1" --output text 2>/dev/null)
+    [ "$v" = "None" ] && v=""
+    echo "$v"
+}
+DRONEBOT_URL=${DRONEBOT_URL:-$(live_env DRONEBOT_URL)}
+DRONEBOT_API_TOKEN=${DRONEBOT_API_TOKEN:-$(live_env DRONEBOT_API_TOKEN)}
+RESPONSE_GENERATOR_LAMBDA=${RESPONSE_GENERATOR_LAMBDA:-$(live_env RESPONSE_GENERATOR_LAMBDA)}
 
 # Deploy Lambda
 echo "Deploying Lambda..."
-if aws lambda get-function --function-name $LAMBDA_NAME --region $REGION 2>/dev/null; then
+if aws lambda get-function --function-name $LAMBDA_NAME --region $REGION >/dev/null 2>&1; then
     aws lambda update-function-code \
         --function-name $LAMBDA_NAME \
         --zip-file fileb://lambda.zip \
