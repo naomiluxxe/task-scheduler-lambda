@@ -88,8 +88,12 @@ def handle_message(task, target, channel_id, drone_id=None):
             'error': 'No channel_id or drone_id available'
         }
 
-    # Get agent config
-    agent_config = AGENT_CONFIG.get(assignee, AGENT_CONFIG['void-mother'])
+    # Get agent config. An assignee not in the static map (her arch drones,
+    # 0xf104/0xf107, 2026-10-31) fires AS ITSELF — the generator loads its
+    # persona by agent_id and dronebot sends through its own client. Falling
+    # back to void-mother here would have made an arch's scheduled directive
+    # arrive in her voice.
+    agent_config = AGENT_CONFIG.get(assignee) or {'agent_id': assignee, 'agent_name': assignee}
 
     # Step 1: Generate response using agent_response_generator
     logger.info(f"Generating message via {RESPONSE_GENERATOR_LAMBDA} for task {task['task_id']}")
