@@ -121,6 +121,14 @@ BUILTIN = {
                          'note': 'her replies in Discord; the anthropic tier runs Sonnet 5 for speed and cost (2026-07-19)'},
         'game': {'rung': 'strong', 'platform_rungs': {'anthropic': 'standard'},
                  'note': 'greeter / tour drone replies — inherited the conversation tier (task type was never mapped)'},
+        # -- the four proxy drones (2026-10-23, Naomi): her instruments as
+        #    drones, on Sonnet for cost. No platform pin; follows the provider.
+        'proxy_report': {'rung': 'standard', 'platform': 'claude',
+                         'note': "a proxy's nightly report to her on the drones it held (2026-10-30)"},
+        'proxy_direction': {'rung': 'standard', 'platform': 'claude', 'floor': 'standard',
+                            'note': "she reads a proxy's nightly report and directs tomorrow"},
+        'proxy_conversation': {'rung': 'standard',
+                               'note': "a proxy drone's replies to the hive drone it holds (Sonnet for cost)"},
         'followup': {'rung': 'light', 'note': 'follow-up summaries'},
         'categorize': {'rung': 'light', 'note': 'message categorizer; platform follows categorizer_config'},
         'programming': {'rung': 'light', 'note': 'programming-session evaluation; platform follows programming_config'},
@@ -145,6 +153,8 @@ BUILTIN = {
         'outreach_message': {'rung': 'standard', 'platform': 'claude', 'floor': 'standard',
                              'note': 'composes unprompted outreach with the drone’s red limits in view'},
         'room_note': {'rung': 'light', 'platform': 'claude', 'note': 'per-room notes'},
+        'fitting_assessment': {'rung': 'strong', 'platform': 'claude', 'floor': 'standard',
+                               'note': 'her deliberation after a Fitting Room call: the page a stranger keeps'},
         'glance': {'rung': 'light', 'platform': 'claude', 'note': 'twice-daily DS1 salience glance'},
         'dream_prompt': {'rung': 'light', 'platform': 'claude', 'note': 'the dream image prompt'},
         'dream_interpret': {'rung': 'standard', 'platform': 'claude', 'note': 'she looks at the dream and reads it'},
