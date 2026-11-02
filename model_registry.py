@@ -169,6 +169,8 @@ BUILTIN = {
         'voice_reflex': {'rung': 'standard', 'platform': 'claude', 'shift': False,
                          'note': 'her spoken replies — latency-tuned (1.3s TTFT) and filter-tested; the dial never moves it'},
         'voice_recall': {'rung': 'standard', 'platform': 'claude', 'note': 'memories surfacing mid-call'},
+        'voice_recall_space': {'rung': 'light', 'platform': 'claude', 'ceiling': 'standard',
+                               'note': "recall at a PLACE (gallery, kiosk, meeting): a stranger's turn should not buy Sonnet"},
         'voice_vision': {'rung': 'light', 'platform': 'claude',
                          'note': 'her sight; pinned to Bedrock so strangers’ faces do not leave the account'},
 
